@@ -1,0 +1,39 @@
+{
+    "name": "snoeren-development/laravel-language-sync",
+    "description": "Sync your languages with your main language!",
+    "type": "laravel-plugin",
+    "keywords": [
+        "laravel",
+        "language",
+        "sync"
+    ],
+    "homepage": "https://github.com/snoeren-development/laravel-language-sync",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Michael Snoeren",
+            "email": "info@snoerendevelopment.nl",
+            "homepage": "https://snoerendevelopment.nl/",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^7.2",
+        "illuminate/support": "~5.8.0|^6.0|^7.0",
+        "illuminate/console": "~5.8.0|^6.0|^7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "SnoerenDevelopment\\LanguageSync\\": "src"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "SnoerenDevelopment\\LanguageSync\\LanguageSyncServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
