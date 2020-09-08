@@ -4,6 +4,7 @@ declare(strict_types = 1);
 namespace SnoerenDevelopment\LanguageSync;
 
 use Illuminate\Support\ServiceProvider;
+use SnoerenDevelopment\LanguageSync\Commands\LanguageSync;
 
 class LanguageSyncServiceProvider extends ServiceProvider
 {
@@ -24,6 +25,6 @@ class LanguageSyncServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->commands(LanguageSync::class);
     }
 }
