@@ -1,7 +1,6 @@
 # Laravel Language Sync
 [![Latest version on Packagist](https://img.shields.io/packagist/v/snoeren-development/laravel-language-sync.svg?style=flat-square)](https://packagist.org/packages/snoeren-development/laravel-language-sync)
 [![Software License](https://img.shields.io/github/license/snoeren-development/laravel-language-sync?style=flat-square)](LICENSE)
-[![Build status](https://img.shields.io/github/workflow/status/snoeren-development/laravel-language-sync/PHP%20Tests?style=flat-square)](https://github.com/snoeren-development/laravel-language-sync/actions)
 [![Downloads](https://img.shields.io/packagist/dt/snoeren-development/laravel-language-sync?style=flat-square)](https://packagist.org/packages/snoeren-development/laravel-language-sync)
 
 Find missing languages in all other languages using `php artisan language:sync`!
