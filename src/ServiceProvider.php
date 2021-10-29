@@ -3,17 +3,17 @@ declare(strict_types = 1);
 
 namespace SnoerenDevelopment\LanguageSync;
 
-use Illuminate\Support\ServiceProvider;
 use SnoerenDevelopment\LanguageSync\Commands\LanguageSync;
+use Illuminate\Support\ServiceProvider as LaravelServiceProvider;
 
-class LanguageSyncServiceProvider extends ServiceProvider
+class ServiceProvider extends LaravelServiceProvider
 {
     /**
      * Boot the service provider.
      *
      * @return void
      */
-    public function boot()
+    public function boot(): void
     {
         //
     }
@@ -23,7 +23,7 @@ class LanguageSyncServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->commands(LanguageSync::class);
     }

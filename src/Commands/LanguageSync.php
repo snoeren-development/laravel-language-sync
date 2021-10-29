@@ -4,7 +4,6 @@ declare(strict_types = 1);
 namespace SnoerenDevelopment\LanguageSync\Commands;
 
 use DirectoryIterator;
-use Illuminate\Support\Arr;
 use Illuminate\Console\Command;
 
 class LanguageSync extends Command
@@ -14,10 +13,9 @@ class LanguageSync extends Command
      *
      * @var string
      */
-    protected $signature = 'language:sync
-        {main language : Enter the main language, eg. "en"} ' .
-        '{languages?* : Enter the languages to compare against. Omit this parameter ' .
-        'to simply sync with all other available languages.}';
+    protected $signature = 'language:sync {--force}
+         {main language : Enter the main language, eg. "en"} ' .
+        '{languages* : Enter the languages to compare against.}';
 
     /**
      * The console command description.
@@ -29,47 +27,45 @@ class LanguageSync extends Command
     /**
      * Execute the console command.
      *
-     * @return mixed
+     * @return integer
      */
-    public function handle()
+    public function handle(): int
     {
-        // Retrieve the main language.
-        $mainLanguage = $this->argument('main language');
-        if (!$this->languageExists($mainLanguage)) {
-            $this->error('The given main language does not exist.');
-            return 1;
+        // Determine whether the main language exists.
+        if (!$this->exists($source = $this->argument('main language'))) {
+            $this->error("The given source language ({$source}) does not exist.");
+            return Command::FAILURE;
         }
 
-        // Retrieve the other languages.
-        $languages = !empty($this->argument('languages'))
-            ? $this->argument('languages')
-            : $this->getLanguages($mainLanguage);
+        $targets = array_map('strtolower', (array) $this->argument('languages'));
 
-        // Check every language if provided by console input.
-        if (!empty($this->argument('languages'))) {
-            foreach ($languages as $language) {
-                if (!$this->languageExists($language)) {
-                    $this->error(sprintf(
-                        'The given language "%s" does not exist.',
-                        $language
-                    ));
-                    return 1;
-                }
+        // Check with the developer before continuing.
+        if (!$this->option('force')) {
+            if (strtolower($this->ask(
+                'This action could overwrite files. Consider backing up all language files or ' .
+                'using version control. Continue? [y/n]',
+                'y'
+            )) !== 'y') {
+                return Command::SUCCESS;
             }
         }
 
-        // Calculate the difference for every language.
-        foreach ($languages as $language) {
-            $differences = $this->compare($mainLanguage, $language);
+        $files = $this->getLanguageFiles($source);
 
-            $this->info($language);
-            foreach ($differences as $key => $_) {
-                $this->line('- ' . $key);
+        // Sync all JSON files with the requested languages.
+        foreach ($targets as $target) {
+            $this->syncJson($source, $target);
+
+            foreach ($files as $file) {
+                $this->syncFile($source, $target, pathinfo($file, PATHINFO_BASENAME));
             }
-            $this->line('');
+
+            $this->line("Synced \"{$target}\" with \"{$source}\"!");
         }
 
-        return 0;
+        $this->info('Done!');
+
+        return Command::SUCCESS;
     }
 
     /**
@@ -78,42 +74,20 @@ class LanguageSync extends Command
      * @param  string $language The folder name.
      * @return boolean
      */
-    private function languageExists(string $language): bool
+    private function exists(string $language): bool
     {
-        return is_dir($this->getPath() . $language);
-    }
-
-    /**
-     * Find all other languages besides the main language.
-     *
-     * @param  string $mainLanguage The main language.
-     * @return array
-     */
-    private function getLanguages(string $mainLanguage): array
-    {
-        $iterator = new DirectoryIterator($this->getPath());
-        $directories = [];
-
-        foreach ($iterator as $resource) {
-            if (!$resource->isDir() || $resource->isDot() || $resource->getBasename() === $mainLanguage) {
-                continue;
-            }
-
-            $directories[] = $resource->getBasename();
-        }
-
-        return $directories;
+        return is_dir(lang_path($language)) || is_file(lang_path($language . '.json'));
     }
 
     /**
      * Find all the language files for a given language.
      *
      * @param  string $language The language.
-     * @return array
+     * @return string[]
      */
     private function getLanguageFiles(string $language): array
     {
-        $iterator = new DirectoryIterator($this->getPath() . $language);
+        $iterator = new DirectoryIterator(lang_path($language));
         $files = [];
 
         foreach ($iterator as $resource) {
@@ -128,59 +102,89 @@ class LanguageSync extends Command
     }
 
     /**
-     * Get the path to the language folder.
+     * Sync one JSON language file to another.
      *
-     * @return string
+     * @param  string $source The source language.
+     * @param  string $target The target language.
+     * @return boolean
      */
-    private function getPath(): string
+    private function syncJson(string $source, string $target): bool
     {
-        return resource_path('lang/');
+        $sourceFile = lang_path("{$source}.json");
+        $targetFile = lang_path("{$target}.json");
+
+        // Check whether there is a file to sync with.
+        if (!is_file($sourceFile)) {
+            return true;
+        }
+
+        // Read both files if available.
+        $sourceData = (array) json_decode(file_get_contents($sourceFile));
+        $targetData = is_file($targetFile)
+            ? (array) json_decode(file_get_contents($targetFile))
+            : [];
+
+        $difference = array_diff_key($sourceData, $targetData);
+
+        // Add missing translations.
+        foreach (array_keys($difference) as $key) {
+            $targetData[$key] = "__MISSING_TRANSLATION__";
+        }
+
+        // Remove non-existing translations.
+        foreach (array_keys(array_diff_key($targetData, $sourceData)) as $key) {
+            unset($targetData[$key]);
+        }
+
+        // Write the updated translation to disk.
+        return file_put_contents($targetFile, json_encode($targetData, JSON_PRETTY_PRINT)) > 0;
     }
 
     /**
-     * Get the differences between two languages.
+     * Sync one language file to another.
      *
-     * @param  string $mainLanguage The main language.
-     * @param  string $language     The language to compare with.
-     * @return array
+     * @param  string $source The source language.
+     * @param  string $target The target language.
+     * @param  string $file   The file name.
+     * @return boolean
      */
-    private function compare(string $mainLanguage, string $language): array
+    private function syncFile(string $source, string $target, string $file): bool
     {
-        // Get the files from both languages.
-        $mainFiles = $this->getLanguageFiles($mainLanguage);
-        $files = $this->getLanguageFiles($language);
-
-        // Get the main language strings.
-        $mainStrings = [];
-        foreach ($mainFiles as $file) {
-            $path = $this->getPath() . $mainLanguage . '/' . $file;
-            $strings = require $path;
-
-            // Skip bad language files.
-            if (!is_array($strings)) {
-                continue;
-            }
-
-            $key = preg_replace('/\.php$/', '', $file);
-            $mainStrings = array_merge($mainStrings, Arr::dot([$key => $strings]));
+        $sourceFile = lang_path("{$source}/{$file}");
+        $targetFile = lang_path("{$target}/{$file}");
+        if (!is_file($sourceFile)) {
+            return true;
         }
 
-        // Get the other language strings.
-        $otherStrings = [];
-        foreach ($files as $file) {
-            $path = $this->getPath() . $language . '/' . $file;
-            $strings = require $path;
+        $sourceData = require $sourceFile;
+        $targetData = is_file($targetFile)
+            ? require $targetFile
+            : [];
 
-            // Skip bad language files.
-            if (!is_array($strings)) {
-                continue;
-            }
+        $difference = array_diff_key($sourceData, $targetData);
 
-            $key = preg_replace('/\.php$/', '', $file);
-            $otherStrings = array_merge($otherStrings, Arr::dot([$key => $strings]));
+        // Add missing translations.
+        foreach (array_keys($difference) as $key) {
+            $targetData[$key] = "__MISSING_TRANSLATION__";
         }
 
-        // Return the differences.
-        return array_diff_key($mainStrings, $otherStrings);
+        // Remove non-existing translations.
+        foreach (array_keys(array_diff_key($targetData, $sourceData)) as $key) {
+            unset($targetData[$key]);
+        }
+
+        // Determine if the language folder exists.
+        if (!is_dir($folder = dirname($targetFile))) {
+            mkdir($folder);
+        }
+
+        // Write the updated translation to disk.
+        $buffer = '<?php' . PHP_EOL . PHP_EOL . 'return [' . PHP_EOL;
+        foreach ($targetData as $key => $value) {
+            $buffer .= "    '{$key}' => '{$value}'," . PHP_EOL;
+        }
+        $buffer .= '];' . PHP_EOL;
+
+        return file_put_contents($targetFile, $buffer) > 0;
     }
 }
