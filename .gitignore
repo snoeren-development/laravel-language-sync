@@ -1,1 +1,4 @@
 /vendor/
+.phpunit.result.cache
+/tests/resources/lang/nl/
+/tests/resources/lang/nl.json
