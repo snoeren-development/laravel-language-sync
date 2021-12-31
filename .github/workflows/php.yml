@@ -22,7 +22,7 @@ jobs:
       uses: shivammathur/setup-php@v2
       with:
         php-version: ${{ matrix.php-versions }}
-        coverage: xdebug
+        coverage: pcov
 
     - name: Validate composer.json and composer.lock
       run: composer validate
@@ -31,4 +31,4 @@ jobs:
       run: composer install --prefer-dist --no-progress --no-suggest
 
     - name: Run test suite
-      run: vendor/bin/pest --coverage-text
+      run: vendor/bin/pest --coverage
