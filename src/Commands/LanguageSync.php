@@ -129,7 +129,7 @@ class LanguageSync extends Command
 
         // Add missing translations.
         foreach (array_keys($difference) as $key) {
-            $targetData[$key] = "__MISSING_TRANSLATION__";
+            $targetData[$key] = '__MISSING_TRANSLATION__';
         }
 
         // Remove non-existing translations.
@@ -151,13 +151,9 @@ class LanguageSync extends Command
      */
     private function syncFile(string $source, string $target, string $file): bool
     {
-        $sourceFile = lang_path("{$source}/{$file}");
         $targetFile = lang_path("{$target}/{$file}");
-        if (!is_file($sourceFile)) {
-            return true;
-        }
 
-        $sourceData = Arr::dot(require $sourceFile);
+        $sourceData = Arr::dot(require lang_path("{$source}/{$file}"));
         $targetData = is_file($targetFile)
             ? Arr::dot(require $targetFile)
             : [];
