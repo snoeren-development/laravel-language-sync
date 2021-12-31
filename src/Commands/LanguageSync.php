@@ -4,6 +4,7 @@ declare(strict_types = 1);
 namespace SnoerenDevelopment\LanguageSync\Commands;
 
 use DirectoryIterator;
+use Illuminate\Support\Arr;
 use Illuminate\Console\Command;
 
 class LanguageSync extends Command
@@ -156,9 +157,9 @@ class LanguageSync extends Command
             return true;
         }
 
-        $sourceData = require $sourceFile;
+        $sourceData = Arr::dot(require $sourceFile);
         $targetData = is_file($targetFile)
-            ? require $targetFile
+            ? Arr::dot(require $targetFile)
             : [];
 
         $difference = array_diff_key($sourceData, $targetData);
@@ -178,13 +179,39 @@ class LanguageSync extends Command
             mkdir($folder);
         }
 
+        $targetData = Arr::undot($targetData);
+
         // Write the updated translation to disk.
         $buffer = '<?php' . PHP_EOL . PHP_EOL . 'return [' . PHP_EOL;
-        foreach ($targetData as $key => $value) {
-            $buffer .= "    '{$key}' => '{$value}'," . PHP_EOL;
-        }
+        $buffer .= $this->writePhpArray($targetData, 1);
         $buffer .= '];' . PHP_EOL;
 
         return file_put_contents($targetFile, $buffer) > 0;
+    }
+
+    /**
+     * Recursively write a PHP array with array support.
+     *
+     * @param  array   $translations The translation list.
+     * @param  integer $level        The current recursion level.
+     * @return string
+     */
+    private function writePhpArray(array $translations, int $level): string
+    {
+        $buffer = '';
+
+        foreach ($translations as $key => $value) {
+            if (is_array($value)) {
+                $buffer .= str_repeat('    ', $level) .
+                    "'{$key}' => [" . PHP_EOL .
+                    $this->writePhpArray($value, $level + 1)
+                    . str_repeat('    ', $level) . '],' . PHP_EOL;
+                continue;
+            }
+
+            $buffer .= str_repeat('    ', $level) . "'{$key}' => '{$value}'," . PHP_EOL;
+        }
+
+        return $buffer;
     }
 }
