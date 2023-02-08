@@ -205,6 +205,7 @@ class LanguageSync extends Command
                 continue;
             }
 
+            $value = addslashes($value);
             $buffer .= str_repeat('    ', $level) . "'{$key}' => '{$value}'," . PHP_EOL;
         }
 
