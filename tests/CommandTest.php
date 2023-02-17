@@ -190,6 +190,8 @@ it('removes keys that are missing in the main translation', function (): void {
 });
 
 it('creates folders for translations if not already there', function (): void {
+    // Remove existing files in the folder and remove the folder too.
+    array_map('unlink', glob(lang_path('nl/*')));
     rmdir($dir = lang_path('nl'));
 
     $this
