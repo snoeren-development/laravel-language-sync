@@ -15,7 +15,7 @@ composer require snoeren-development/laravel-language-sync
 ```
 
 ### Requirements
-This package requires at least PHP 7.4 and Laravel 8.
+This package requires at least PHP 8.0 and Laravel 8.
 
 ### Usage
 Run `php artisan language:sync {main language} {targets}` to sync the targets
